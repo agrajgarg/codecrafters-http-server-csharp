@@ -1,37 +1,28 @@
-using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Net.Sockets;
-// Start the server
+using System.Text;
+// You can use print statements as follows for debugging, they'll be visible
+// when running tests.
+Console.WriteLine("Logs from your program will appear here!");
+// Uncomment this block to pass the first stage
 var server = new TcpListener(IPAddress.Any, 4221);
 server.Start();
-using TcpClient client = await server.AcceptTcpClientAsync();
-await using NetworkStream stream = client.GetStream();
-// Read incoming data
-byte[] requestBuffer = new byte[1024];
-int bytesRead = await stream.ReadAsync(requestBuffer, 0, requestBuffer.Length);
-string request = System.Text.Encoding.UTF8.GetString(requestBuffer, 0, bytesRead);
-Console.WriteLine($"Received request: {request}");
-var requestLines = request.Split("\r\n");
-var requests = requestLines[0].Split("/");
-for (int i = 0; i < requestLines.Length; i++)
-{
-    Console.WriteLine(requestLines[i]);
+var socket = server.AcceptSocket(); // wait for client
+var message = "HTTP/1.1 404 Not Found\r\n\r\n";
+var buffer = new byte[1024];
+var bytes = socket.Receive(buffer);
+var request = Encoding.UTF8.GetString(buffer);
+var parts = request.Split("\r\n");
+var path = parts[0].Split(' ')[1];
+if (path == "/")
+  message = "HTTP/1.1 200 OK\r\n\r\n";
+else if (path.Contains("/echo")) {
+  var random = path.Split("/echo/")[1];
+  message = $"HTTP/1.1 200 OK\r\n" + $"Content-Type: text/plain\r\n" +
+            $"Content-Length: {random.Length}\r\n" + $"\r\n{random}";
+} else if (path == "/user-agent") {
+  var userAgent = parts[2].Split(' ')[1];
+  message = $"HTTP/1.1 200 OK\r\n" + $"Content-Type: text/plain\r\n" +
+            $"Content-Length: {userAgent.Length}\r\n\r\n" + $"{userAgent}";
 }
-// Prepare and send response
-string response = "";
-if (requests[1] == " HTTP")
-{
-    response = "HTTP/1.1 200 OK\r\n\r\n";
-}
-else if (requests[1] == "user-agent HTTP")
-{
-    string str = requestLines[3].Split(": ")[1];
-    int len = str.Length;
-    response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + len + "\r\n\r\n" + str;
-}
-else
-{
-    response = "HTTP/1.1 404 Not Found\r\n\r\n";
-}
-byte[] responseBuffer = System.Text.Encoding.UTF8.GetBytes(response);
-stream.Write(responseBuffer, 0, responseBuffer.Length);
+socket.Send(Encoding.UTF8.GetBytes(message));

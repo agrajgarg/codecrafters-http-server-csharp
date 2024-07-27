@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Net.Sockets;
 // Start the server
@@ -14,8 +15,20 @@ Console.WriteLine($"Received request: {request}");
 var requestLines = request.Split("\r\n");
 var requests = requestLines[0].Split("/");
 // Prepare and send response
-string response = requests[1].Equals(" HTTP")
-    ? "HTTP/1.1 200 OK\r\n\r\n"
-    : "HTTP/1.1 404 Not Found\r\n\r\n";
+string response = "";
+if (requests[1] == " HTTP")
+{
+    response = "HTTP/1.1 200 OK\r\n\r\n";
+}
+else if (requests[1] == "echo")
+{
+    string str = requests[2].Split(" ")[0];
+    int len = str.Length;
+    response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + len + "\r\n\r\n" + str;
+}
+else
+{
+    response = "HTTP/1.1 404 Not Found\r\n\r\n";
+}
 byte[] responseBuffer = System.Text.Encoding.UTF8.GetBytes(response);
 stream.Write(responseBuffer, 0, responseBuffer.Length);

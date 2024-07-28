@@ -29,6 +29,7 @@ internal class Program
             var request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
             var parts = request.Split("\r\n");
             var path = parts[0].Split(' ')[1];
+            
     
             string message;
             if (path == "/")
@@ -45,11 +46,30 @@ internal class Program
             }
             else if (path == "/user-agent")
             {
-                var userAgent = parts.FirstOrDefault(p => p.StartsWith("User-Agent: "))?.Substring("User-Agent: ".Length);
+                var userAgent = parts.FirstOrDefault(p => p.StartsWith("User-Agent: "))
+                    ?.Substring("User-Agent: ".Length);
                 message = $"HTTP/1.1 200 OK\r\n" +
                           $"Content-Type: text/plain\r\n" +
                           $"Content-Length: {userAgent?.Length ?? 0}\r\n" +
                           $"\r\n{userAgent}";
+            }
+            else if (path.StartsWith("/files"))
+            {
+                var fileName = path.Split("/")[2];
+                var env = Environment.GetCommandLineArgs();
+                var currentDirectory = env[2];
+                var filePath = currentDirectory + "/"+ fileName;
+                
+                if (File.Exists(filePath))
+                {
+                    var fileContent = File.ReadAllText((filePath));
+                    message =
+                        $"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {fileContent.Length}\r\n\r\n{fileContent}";
+                }
+                else
+                {
+                    message = "HTTP/1.1 404 Not Found\r\n\r\n";
+                }
             }
             else
             {

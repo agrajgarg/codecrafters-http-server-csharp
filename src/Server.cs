@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -39,6 +40,7 @@ internal class Program
             }
             else if (path.StartsWith("/echo/"))
             {
+                string text = path.Split("/")[2];
                 if (encoding.StartsWith("Accept-Encoding:"))
                 {
                     var encodingCompression = encoding.Split(" ");
@@ -51,9 +53,28 @@ internal class Program
                             break;
                         }
                     }
-                    if (containsGzip)
+                    if (!String.IsNullOrEmpty(text) && containsGzip)
                     {
-                        message = $"HTTP/1.1 200 OK\r\n" + $"Content-Type: text/plain\r\n" + $"Content-Encoding: gzip\r\n" + "\r\n";
+                        using (var compressedStream = new MemoryStream())
+                        {
+                            byte[] bytesContent = Encoding.UTF8.GetBytes(text);
+                            GZipStream gZipStream = new GZipStream(compressedStream, CompressionMode.Compress, true);
+                            gZipStream.Write(bytesContent, 0, bytesContent.Length);
+                            gZipStream.Flush();
+                            gZipStream.Close();
+                            byte[] compressedContent = compressedStream.ToArray();
+                            message = $"HTTP/1.1 200 OK\r\n" +
+                                      $"Content-Type: text/plain\r\n" +
+                                      $"Content-Encoding: gzip\r\n" +
+                                      $"Content-Length: {compressedContent.Length}\r\n" +
+                                      "\r\n";
+                            await stream.WriteAsync(Encoding.UTF8.GetBytes(message), 0,
+                                Encoding.UTF8.GetBytes(message).Length);
+                            await stream.WriteAsync(compressedContent, 0, compressedContent.Length);
+                            return;
+
+                        }
+                        
                     }
                     else
                     {

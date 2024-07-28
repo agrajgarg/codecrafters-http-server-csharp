@@ -29,9 +29,9 @@ internal class Program
             var request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
             var parts = request.Split("\r\n");
             var path = parts[0].Split(' ')[1];
-            
+            string method = parts[0].Split("/")[0].Trim();
     
-            string message;
+            string message = String.Empty;
             if (path == "/")
             {
                 message = "HTTP/1.1 200 OK\r\n\r\n";
@@ -59,23 +59,33 @@ internal class Program
                 var env = Environment.GetCommandLineArgs();
                 var currentDirectory = env[2];
                 var filePath = currentDirectory + "/"+ fileName;
-                
-                if (File.Exists(filePath))
+
+                if (method == "GET")
                 {
-                    var fileContent = File.ReadAllText((filePath));
-                    message =
-                        $"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {fileContent.Length}\r\n\r\n{fileContent}";
+                    if (File.Exists(filePath))
+                    {
+                        var fileContent = File.ReadAllText((filePath));
+                        message =
+                            $"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {fileContent.Length}\r\n\r\n{fileContent}";
+                    }
+                    else
+                    {
+                        message = "HTTP/1.1 404 Not Found\r\n\r\n";
+                    }
                 }
-                else
+                else if (method == "POST")
                 {
-                    message = "HTTP/1.1 404 Not Found\r\n\r\n";
+                    // FileStream createdFile= File.Create(filePath);
+                    // byte[] bufferNew = Encoding.UTF8.GetBytes(parts[parts.Length - 1]);
+                    // await createdFile.WriteAsync(bufferNew, 0, bufferNew.Length);
+                    File.WriteAllText(filePath, parts[parts.Length - 1]);
+                    message = "HTTP/1.1 201 Created\r\n\r\n";
                 }
             }
             else
             {
                 message = "HTTP/1.1 404 Not Found\r\n\r\n";
             }
-    
             var responseBytes = Encoding.UTF8.GetBytes(message);
             await stream.WriteAsync(responseBytes, 0, responseBytes.Length);
         }

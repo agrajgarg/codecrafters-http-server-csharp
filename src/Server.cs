@@ -41,8 +41,17 @@ internal class Program
             {
                 if (encoding.StartsWith("Accept-Encoding:"))
                 {
-                    string encodingCompression = encoding.Split(" ")[1];
-                    if (encodingCompression == "gzip")
+                    var encodingCompression = encoding.Split(" ");
+                    bool containsGzip = false;
+                    for (int i = 1; i < encodingCompression.Length; i++)
+                    {
+                        if (encodingCompression[i].Contains("gzip"))
+                        {
+                            containsGzip = true;
+                            break;
+                        }
+                    }
+                    if (containsGzip)
                     {
                         message = $"HTTP/1.1 200 OK\r\n" + $"Content-Type: text/plain\r\n" + $"Content-Encoding: gzip\r\n" + "\r\n";
                     }
